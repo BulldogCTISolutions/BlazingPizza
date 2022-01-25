@@ -5,7 +5,8 @@
 @implements IDisposable
 
 <div class="main">
-    <EditForm Model=Order.DeliveryAddress OnValidSubmit=PlaceOrder>
+    @* <EditForm Model=Order.DeliveryAddress OnValidSubmit=PlaceOrder> *@
+    <EditForm EditContext=editContext OnValidSubmit=PlaceOrder>
         <div class="checkout-cols">
             <div class="checkout-order-details">
                 <h4>Review order</h4>
@@ -32,26 +33,16 @@
 
 @code
 {
-    EditContext editContext;
-
     Order Order => OrderState.Order;
 
-    bool hasError;
+    bool hasError = true;
+    private EditContext editContext;
+
+
     protected override void OnInitialized()
     {
         editContext = new EditContext(Order.DeliveryAddress);
         editContext.OnFieldChanged += HandleFieldChanged;
-    }
-
-    public void Dispose()
-    {
-        editContext.OnFieldChanged -= HandleFieldChanged;
-    }
-
-    private void HandleFieldChanged(object sender, FieldChangedEventArgs e)
-    {
-        hasError = !editContext.Validate();
-        StateHasChanged();
     }
 
     async Task PlaceOrder()
@@ -60,5 +51,16 @@
         var newOrderId= await response.Content.ReadFromJsonAsync<int>();
         OrderState.ResetOrder();
         NavigationManager.NavigateTo($"myorders/{newOrderId}");
+    }
+
+    private void HandleFieldChanged(object sender, FieldChangedEventArgs e)
+    {
+        hasError = !editContext.Validate();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        editContext.OnFieldChanged -= HandleFieldChanged;
     }
 }

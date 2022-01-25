@@ -1,6 +1,8 @@
 @page "/myorders/{orderId:int}"
 @inject NavigationManager NavigationManager
 @inject HttpClient HttpClient
+@inject IJSRuntime JS
+@implements IDisposable
 
 <div class="top-bar">
     <a class="logo" href="">
@@ -50,21 +52,24 @@
                     Order placed @orderWithStatus.Order.CreatedTime.ToLongDateString()
                 </h2>
                 <p class="ml-auto mb-0">
-                    Status: <strong>@orderWithStatus.StatusText</strong>
+                    Status: <strong id="orderStatus">@orderWithStatus.StatusText</strong>
                 </p>
             </div>
             <div class="track-order-body">
                 <div class="track-order-details">
-                  @foreach (var pizza in orderWithStatus.Order.Pizzas)
-                  {
-                      <p>
-                          <strong>
-                              @(pizza.Size)"
-                              @pizza.Special.Name
-                              ($@pizza.GetFormattedTotalPrice())
-                          </strong>
-                      </p>
-                  }
+                    <div id="progressSpinner" class="spinner-grow text-danger float-right" role="status">
+                        <span class="sr-only">Checking your order status...</span>
+                    </div>
+                    @foreach (var pizza in orderWithStatus.Order.Pizzas)
+                    {
+                        <p>
+                            <strong>
+                                @(pizza.Size)"
+                                @pizza.Special.Name
+                                ($@pizza.GetFormattedTotalPrice())
+                            </strong>
+                        </p>
+                    }
                 </div>
             </div>
         </div>
@@ -77,13 +82,22 @@
 
     OrderWithStatus orderWithStatus;
     bool invalidOrder = false;
+    private DotNetObjectReference<OrderDetail> objRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            objRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("populateObjectRef", objRef);
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {
       try
       {
-          orderWithStatus = await HttpClient.GetFromJsonAsync<OrderWithStatus>(
-              $"{NavigationManager.BaseUri}orders/{OrderId}");
+          orderWithStatus = await HttpClient.GetFromJsonAsync<OrderWithStatus>( $"{NavigationManager.BaseUri}orders/{OrderId}");
       }
       catch (Exception ex)
       {
@@ -91,4 +105,28 @@
           Console.Error.WriteLine(ex);
       }
     }
+
+    [JSInvokable]
+    public async Task<string> GetOrderStatus()
+    {
+        @* orderWithStatus = await HttpClient.GetFromJsonAsync<OrderWithStatus>(NavigationManager.BaseUri + $"orders/{OrderId}");
+        return orderWithStatus.StatusText; *@
+        try
+        {
+            orderWithStatus = await HttpClient.GetFromJsonAsync<OrderWithStatus>( $"{NavigationManager.BaseUri}orders/{OrderId}" );
+            return orderWithStatus.StatusText;
+        }
+        catch (Exception ex)
+        {
+            invalidOrder = true;
+            Console.Error.WriteLine(ex);
+            return "Delivered";
+        }
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+
 }
