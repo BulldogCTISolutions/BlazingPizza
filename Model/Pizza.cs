@@ -8,7 +8,6 @@ namespace BlazingPizza
     /// </summary>
     public class Pizza
     {
-        public const int DefaultSize = 12;
         public const int MinimumSize = 9;
         public const int MaximumSize = 17;
 
@@ -23,6 +22,8 @@ namespace BlazingPizza
         public int Size { get; set; }
 
         public List<PizzaTopping> Toppings { get; set; }
+
+        public int DefaultSize { get; set; } = 12;
 
         public decimal GetBasePrice()
         {
